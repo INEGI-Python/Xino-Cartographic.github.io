@@ -1,0 +1,5 @@
+<RCC>
+    <qresource prefix="/plugins/xino_cartographic" >
+        <file>icon.png</file>
+    </qresource>
+</RCC>
