@@ -21,33 +21,64 @@
  *                                                                         *
  ***************************************************************************/
 """
+
+
+
+
+
+datos=geo.read_file("E:/Compartida/predio.xlsx")
+print(datos)
+
+geom=[Point(v.X,v.Y) for k,v in datos.iterrows()]
+vertices = geo.GeoDataFrame(data=[{"id":i} for i in range(len(geom))],geometry=geom,crs=4486)
+vertices["x"]=vertices.geometry.x
+vertices["y"]=vertices.geometry.y
+poli = geo.GeoDataFrame(data=[{"id":1}],geometry=[Polygon(geom)],crs=4486)
+poli["area"]=poli.geometry.area
+
+temp = poli.minimum_bounding_circle().buffer(20).bounds
+minx, miny, maxx, maxy = temp.iloc[0]
+minx-=50
+maxx+=50
+rect = Polygon([(minx, miny), (maxx, miny), (maxx, maxy), (minx, maxy)])
+print(rect)
+marco = geo.GeoDataFrame(data=[{"id":1}],geometry=[rect],crs=4486)
+
+
+
+try:
+    os.mkdir("shapes")
+except Exception as e:
+    print(e)
+poli.to_file("shapes/predio1.shp")
+marco.to_file("shapes/marco1.shp")
+vertices.to_file("shapes/vertices.shp")
+
+proyecto=QgsProject.instance()
+proyecto.addMapLayer(QgsVectorLayer("shapes/marco1.shp","marco"),True)
+proyecto.addMapLayer(QgsVectorLayer("shapes/predio1.shp","predio1"),True)
+proyecto.addMapLayer(QgsVectorLayer("shapes/vertices.shp","vertices"),True)
+
+
+
+import os
+import pandas as pan
+import geopandas as geo
+from shapely import Point,Polygon
+from .resources import *
+from .xino_cartographic_dialog import XinoCartographicDialog
+import os.path
+
+from qgis.core import QgsProject, QgsVectorLayer
 from qgis.PyQt.QtCore import QSettings, QTranslator, QCoreApplication
 from qgis.PyQt.QtGui import QIcon
 from qgis.PyQt.QtWidgets import QAction
 
-# Initialize Qt resources from file resources.py
-from .resources import *
-# Import the code for the dialog
-from .xino_cartographic_dialog import XinoCartographicDialog
-import os.path
-
 
 class XinoCartographic:
-    """QGIS Plugin Implementation."""
-
     def __init__(self, iface):
-        """Constructor.
-
-        :param iface: An interface instance that will be passed to this class
-            which provides the hook by which you can manipulate the QGIS
-            application at run time.
-        :type iface: QgsInterface
-        """
-        # Save reference to the QGIS interface
         self.iface = iface
-        # initialize plugin directory
         self.plugin_dir = os.path.dirname(__file__)
-        # initialize locale
         locale = QSettings().value('locale/userLocale')[0:2]
         locale_path = os.path.join(
             self.plugin_dir,
@@ -58,28 +89,12 @@ class XinoCartographic:
             self.translator = QTranslator()
             self.translator.load(locale_path)
             QCoreApplication.installTranslator(self.translator)
-
-        # Declare instance attributes
         self.actions = []
         self.menu = self.tr(u'&Xino Cartographic')
 
-        # Check if plugin was started the first time in current QGIS session
-        # Must be set in initGui() to survive plugin reloads
         self.first_start = None
 
-    # noinspection PyMethodMayBeStatic
     def tr(self, message):
-        """Get the translation for a string using Qt translation API.
-
-        We implement this ourselves since we do not inherit QObject.
-
-        :param message: String for translation.
-        :type message: str, QString
-
-        :returns: Translated version of message.
-        :rtype: QString
-        """
-        # noinspection PyTypeChecker,PyArgumentList,PyCallByClass
         return QCoreApplication.translate('XinoCartographic', message)
 
 
@@ -180,21 +195,18 @@ class XinoCartographic:
             self.iface.removeToolBarIcon(action)
 
 
-    def run(self):
-        """Run method that performs all the real work"""
+    def cargarDatos(self,excel):
+        coords=pan.read_excel(excel,sheet_name="coords",header=0)
+        datos=pan.read_excel(excel,sheet_name="datos",header=0)
+        print(datos.keys())
+        print(coords())
 
-        # Create the dialog with elements (after translation) and keep reference
-        # Only create GUI ONCE in callback, so that it will only load when the plugin is started
+    def run(self):
         if self.first_start == True:
             self.first_start = False
             self.dlg = XinoCartographicDialog()
 
-        # show the dialog
         self.dlg.show()
-        # Run the dialog event loop
         result = self.dlg.exec_()
-        # See if OK was pressed
         if result:
-            # Do something useful here - delete the line containing pass and
-            # substitute with your code.
             pass
